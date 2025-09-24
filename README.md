@@ -1,5 +1,3 @@
-# NAME: NARESH M
-# REG.NO: 212223220064
 # Sturdy-Octo-Disco-Adding-Sunglasses-for-a-Cool-New-Look
 
 Sturdy Octo Disco is a fun project that adds sunglasses to photos using image processing.
@@ -27,81 +25,105 @@ Welcome to Sturdy Octo Disco, a fun and creative project designed to overlay sun
 - Adding flair to your photos for fun.
 - Practicing computer vision workflows.
 
-## program
+## Program and Output:
+```
+#Name : NARESH.M
+#Reg No : 212223220064
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+#Load face image
+faceImage = cv2.imread('photo1.jpeg')
+plt.imshow(faceImage[:,:,::-1]); plt.title("Face")
+print("Face shape:", faceImage.shape)
+```
+<img width="434" height="512" alt="image" src="https://github.com/user-attachments/assets/d1468944-3e8d-4bf2-b9be-11be1975f662" />
+
+
+
+
+```
+glassJPG = cv2.imread('glass.jpg')
+plt.imshow(glassJPG[:,:,::-1]); plt.title("glassJPG")
+print("Glass shape:", glassJPG.shape)
+```
+![second photo](https://github.com/user-attachments/assets/d8e0b131-3a21-4603-8ff6-93b168c0a9a2)
+
+
+
+```
+glassBGR = glassJPG[:,:,0:3]
+glassGray = cv2.cvtColor(glassBGR, cv2.COLOR_BGR2GRAY)
+_, glassMask1 = cv2.threshold(glassGray, 240, 255, cv2.THRESH_BINARY_INV)  # detect non-white
+
+plt.figure(figsize=[15,15])
+#Show sunglasses color channels
+plt.subplot(121)
+plt.imshow(glassBGR[:,:,::-1])  # BGR → RGB
+plt.title('Sunglass Color channels')
+```
+
+![third photo](https://github.com/user-attachments/assets/438f8fb5-d1e1-47df-9eb5-80cf53d54a93)
+
+
+
+```
+#Show generated mask
+plt.subplot(122)
+plt.imshow(glassMask1, cmap='gray')
+plt.title('Sunglass Mask (generated)')
+```
+
+![fourth photo](https://github.com/user-attachments/assets/d79db6d8-73d5-4c56-a15d-5fdaf37c8c4b)
+
+
+
 ```
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+#Load images
+faceImage = cv2.imread('photo1.jpeg')
+glassJPG = cv2.imread('glass.jpg')
 
-faceImage = cv2.imread('ws.jpg')
-plt.imshow(faceImage[:,:,::-1]);plt.title("Face")
+#Check if images loaded correctly
+if faceImage is None or glassJPG is None:
+    print("Error: Check your file paths!")
+else:
+    face_h, face_w, _ = faceImage.shape
 
+    #Resize glasses to ~50% of face width
+    new_w = int(face_w * 0.5)
+    new_h = int(new_w * glassJPG.shape[0] / glassJPG.shape[1])
+    glass_resized = cv2.resize(glassJPG, (new_w, new_h))
 
-faceImage.shape
+    #Create mask
+    glass_gray = cv2.cvtColor(glass_resized, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(glass_gray, 240, 255, cv2.THRESH_BINARY_INV)
+    mask_inv = cv2.bitwise_not(mask)
 
-glassPNG = cv2.imread('sunglass.png',-1)
-plt.imshow(glassPNG[:,:,::-1]);plt.title("glassPNG")
+    # Adjusted position to place glasses on eyes
+    x = int(face_w * 0.25)   # x offset (centered)
+    y = int(face_h * 0.25)   # y offset (move up from nose to eyes)
 
+    #ROI on face
+    roi = faceImage[y:y+new_h, x:x+new_w]
 
-glassPNG = cv2.resize(glassPNG,(500,400))
-print("image Dimension ={}".format(glassPNG.shape))
+    if roi.shape[0] > 0 and roi.shape[1] > 0:
+        bg = cv2.bitwise_and(roi, roi, mask=mask_inv)
+        fg = cv2.bitwise_and(glass_resized, glass_resized, mask=mask)
+        combined = cv2.add(bg, fg)
+        faceImage[y:y+new_h, x:x+new_w] = combined
 
-
-glassBGR = glassPNG[:,:,0:3]
-glassMask1 = glassPNG[:,:,3]
-
-
-plt.figure(figsize=[15,15])
-plt.subplot(121);plt.imshow(glassBGR[:,:,::-1]);plt.title('Sunglass Color channels');
-plt.subplot(122);plt.imshow(glassMask1,cmap='gray');plt.title('Sunglass Alpha channel');
-
-
-faceWithGlassesNaive = faceImage.copy()
-
-faceWithGlassesNaive[230:630,250:750]=glassBGR
-
-plt.imshow(faceWithGlassesNaive[...,::-1])
-
-
-glassMask = cv2.merge((glassMask1,glassMask1,glassMask1))
-
-glassMask = np.uint8(glassMask/255)
-
-faceWithGlassesArithmetic = faceImage.copy()
-
-eyeROI= faceWithGlassesArithmetic[230:630,250:750]
-
-maskedEye = cv2.multiply(eyeROI,(1-  glassMask ))
-
-maskedGlass = cv2.multiply(glassBGR,glassMask)
-
-eyeRoiFinal = cv2.add(maskedEye, maskedGlass)
-
-plt.figure(figsize=[20,20])
-plt.subplot(131);plt.imshow(maskedEye[...,::-1]);plt.title("Masked Eye Region")
-plt.subplot(132);plt.imshow(maskedGlass[...,::-1]);plt.title("Masked Sunglass Region")
-plt.subplot(133);plt.imshow(eyeRoiFinal[...,::-1]);plt.title("Augmented Eye and Sunglass")
-
-
-faceWithGlassesArithmetic[230:630,250:750]=eyeRoiFinal
-
-plt.figure(figsize=[20,20]);
-plt.subplot(121);plt.imshow(faceImage[:,:,::-1]); plt.title("Original Image");
-plt.subplot(122);plt.imshow(faceWithGlassesArithmetic[:,:,::-1]);plt.title("With Sunglasses");
-
+    #Show result
+    plt.figure(figsize=[10,10])
+    plt.imshow(cv2.cvtColor(faceImage, cv2.COLOR_BGR2RGB))
+    plt.title("Face with Sunglasses")
+    plt.axis("off")
+    plt.show()
 ```
-## output:
-![image](https://github.com/user-attachments/assets/aef4004e-4717-49ec-b13f-0c08d311a6b9)
+<img width="786" height="772" alt="image" src="https://github.com/user-attachments/assets/a50fc791-993a-4b6b-a908-865d54a9c430" />
 
-![image](https://github.com/user-attachments/assets/56ec2b71-1082-4b7d-9253-1ad9c9705034)
 
-![image](https://github.com/user-attachments/assets/ccd38b87-184e-4df4-b0e9-5b6682214b36)
-
-![image](https://github.com/user-attachments/assets/083c3e2e-aa77-4159-bc6f-b112ad5dd248)
-
-![image](https://github.com/user-attachments/assets/735765fb-08bf-4a5c-afe6-df24f44c1797)
-
-![image](https://github.com/user-attachments/assets/659f946d-8723-4909-bc89-89cb8357f83a)
-
-Feel free to fork, contribute, or customize this project for your creative needs!
